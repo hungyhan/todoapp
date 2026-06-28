@@ -1,6 +1,76 @@
-# dependencies
-/node_modules
+# ==========================================
+# 1. THƯ VIỆN PHỤ THUỘC (DEPENDENCIES)
+# ==========================================
+node_modules/
+client/node_modules/
+server/node_modules/
+jspm_packages/
+web_modules/
 
+# ==========================================
+# 2. SẢN PHẨM BUILD VÀ BIÊN DỊCH (PRODUCTION BUILDS)
+# ==========================================
+client/dist/
+client/build/
+client/out/
+server/dist/
+server/build/
+.next/
+.nuxt/
 
-# misc
+# ==========================================
+# 3. BẢO MẬT & MÔI TRƯỜNG (ENV & SECRETS) - BẮT BUỘC
+# ==========================================
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+client/.env
+client/.env.local
+server/.env
+server/.env.local
+*.env
+*.pem
+*.key
+
+# ==========================================
+# 4. NHẬT KÝ HỆ THỐNG VÀ LỖI (LOGS)
+# ==========================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# 5. CẤU HÌNH CỦA HỆ ĐIỀU HÀNH (OS FILES)
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# 6. CẤU HÌNH CỦA TRÌNH SOẠN THẢO (IDE/EDITORS)
+# ==========================================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==========================================
+# 7. CACHE VÀ CÔNG CỤ KHÁC
+# ==========================================
+.npm
+.eslintcache
+.stylelintcache
+.prettiercache
+.parcel-cache
+.turbo
