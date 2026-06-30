@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       '/todos': {
         target: 'http://localhost:5000',
+        // target: 'http://server-local:5000',
         changeOrigin: true,
       },
     },

@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  client-local:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev # <--- Bí kíp ở đây: Chỉ định rõ dùng file .dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app # Đồng bộ code từ máy bạn vào Docker để Hot Reload hoạt động
+      - /app/node_modules # Không để node_modules của máy thật đè lên trong Docker
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Giúp Vite nhận diện thay đổi file mượt mà hơn trên Docker
+
+  server-local:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev # <--- Chỉ định rõ dùng file .dev cho server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app # Sửa code Nodejs ở máy thật, Nodemon trong Docker tự ăn luôn
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development

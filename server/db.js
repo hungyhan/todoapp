@@ -13,6 +13,7 @@ require("dotenv").config();
 const devConfig = {
   user: "postgres",
   password: "123456",
+  // host: "host.docker.internal",
   host: "localhost",
   database: "perntodo",
   port: 5432,
