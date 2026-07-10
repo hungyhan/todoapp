@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+    environment {
+        // Thay thông tin của bạn ở đây
+        AWS_ACCOUNT_ID = '527055790396' 
+        AWS_REGION     = 'ap-southeast-1' 
+        CLIENT_IMAGE_NAME = 'do2602/hungcm-client'
+        SERVER_IMAGE_NAME = 'do2602/hungcm-server'
+        IMAGE_TAG      = "${env.BUILD_NUMBER}" // Lấy số thứ tự build làm tag
+        ECR_URL        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Pulling code from GitHub...'
+                git url: 'https://github.com/hungyhan/todoapp.git',
+                    branch: 'main',
+                    credentialsId: 'do2602-jenkins-github'
+            }
+        }
+        stage('Login to AWS ECR') {
+            steps {
+                echo 'Login to ECR...'
+                // Lệnh login sử dụng IAM Role (không cần pass)
+                sh """
+                    aws ecr get-login-password --region ${AWS_REGION} \
+                    | docker login --username AWS --password-stdin ${ECR_URL}
+                """
+            }
+        }
+        stage('Build Client Image') {
+            steps {
+                echo 'Building client image...'
+                sh """
+                    docker build -t ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} ./client
+                    docker tag ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
+                    docker tag ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
+                """
+            }
+        }
+        stage('Build Server Image') {
+            steps {
+                echo 'Building server image...'
+                sh """
+                    docker build -t ${SERVER_IMAGE_NAME}:${IMAGE_TAG} ./server
+                    docker tag ${SERVER_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
+                    docker tag ${SERVER_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
+                """
+            }
+        }
+        stage('Push Images to ECR') {
+            steps {
+                echo 'Pushing images to ECR...'
+                sh """
+                    docker push ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
+
+                    docker push ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
+                """
+            }
+        }
+        
+        stage('Cleanup') {
+            steps {
+                // Xóa ảnh local để tránh đầy ổ cứng server
+                sh """
+                    docker rmi ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
+                    docker rmi ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
+                    docker rmi ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
+                    docker rmi ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
+                """
+            }
+        }
+    }
+}
