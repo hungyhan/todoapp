@@ -18,7 +18,7 @@ FROM nginx:1.25-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Expose cổng 80 (Cổng mặc định của Web Server Nginx)
-EXPOSE 80
+EXPOSE 3000
 
 # Chạy Nginx ở chế độ foreground để container không bị tắt
 CMD ["nginx", "-g", "daemon off;"]
