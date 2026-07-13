@@ -8,6 +8,8 @@ pipeline {
         SERVER_IMAGE_NAME = 'do2602/hungcm-server'
         IMAGE_TAG      = "${env.BUILD_NUMBER}" // Lấy số thứ tự build làm tag
         ECR_URL        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        CLIENT_IMAGE = "${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}"
+        SERVER_IMAGE = "${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}"
     }
     stages {
         stage('Checkout Code') {
@@ -51,6 +53,8 @@ pipeline {
         stage('Push Images to ECR') {
             steps {
                 echo 'Pushing images to ECR...'
+                echo "Client image: ${CLIENT_IMAGE}"
+                echo "Server image: ${SERVER_IMAGE}"
                 sh """
                     docker push ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
@@ -60,7 +64,25 @@ pipeline {
                 """
             }
         }
-        
+        // stage('Deploy Server to Kubernetes') {
+        //     steps {
+        //         echo 'Deploying server to Kubernetes...'
+
+        //         sh """
+        //             echo "Server image: ${SERVER_IMAGE}"
+
+        //             kubectl apply -f k8s/00-namespace.yaml
+        //             kubectl apply -f k8s/01-configmap.yaml
+        //             kubectl apply -f k8s/02-secret.yaml
+
+        //             envsubst < k8s/03-server-deployment.yaml | kubectl apply -f -
+
+        //             kubectl rollout status deployment/todo-server \
+        //                 --namespace todo-app \
+        //                 --timeout=180s
+        //         """
+        //     }
+        // }
         stage('Cleanup') {
             steps {
                 // Xóa ảnh local để tránh đầy ổ cứng server
