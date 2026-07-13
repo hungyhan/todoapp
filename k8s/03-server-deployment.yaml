@@ -21,8 +21,8 @@ spec:
       containers:
         - name: todo-server
 
-          # image: ${SERVER_IMAGE}
-          image: 527055790396.dkr.ecr.ap-southeast-1.amazonaws.com/do2602/hungcm-server:6
+          image: ${SERVER_IMAGE}
+          # image: 527055790396.dkr.ecr.ap-southeast-1.amazonaws.com/do2602/hungcm-server:6
 
           imagePullPolicy: IfNotPresent
 
