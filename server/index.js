@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 5000;
 //test thử jenkins
 //test thử jenkins lần 2
 
-
 // middleware
 app.use(express.json()); // giving us access to req.body so we can get JSON Data.
 app.use(cors());
@@ -23,17 +22,21 @@ if (process.env.NODE_ENV === "production") {
   // server static content
   // npm run build
   app.use(express.static(path.join(__dirname, "client_new/dist")));
-};
+}
 
 // ROUTES //
-
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+  });
+});
 // CREATE A TODO
 app.post("/todos", async (req, res) => {
   try {
     const { description } = req.body;
     const newTodo = await pool.query(
       "INSERT INTO todo (description) VALUES($1) RETURNING *",
-      [description]
+      [description],
     );
 
     res.json(newTodo.rows[0]);
@@ -72,7 +75,7 @@ app.put("/todos/:id", async (req, res) => {
     const { description } = req.body;
     const updateTodo = await pool.query(
       "UPDATE todo SET description = $1 WHERE todo_id = $2",
-      [description, id]
+      [description, id],
     );
 
     res.json("Todo was updated!");
@@ -98,4 +101,6 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "client_new/dist/index.html"));
 });
 
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () =>
+  console.log(`Server is running on port ${PORT}`),
+);
