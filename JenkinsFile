@@ -1,96 +1,145 @@
 pipeline {
     agent any
+
     environment {
-        // Thay thông tin của bạn ở đây
-        AWS_ACCOUNT_ID = '527055790396' 
-        AWS_REGION     = 'ap-southeast-1' 
+        AWS_ACCOUNT_ID = '527055790396'
+        AWS_REGION = 'ap-southeast-1'
+
         CLIENT_IMAGE_NAME = 'do2602/hungcm-client'
         SERVER_IMAGE_NAME = 'do2602/hungcm-server'
-        IMAGE_TAG      = "${env.BUILD_NUMBER}" // Lấy số thứ tự build làm tag
-        ECR_URL        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        CLIENT_IMAGE = "${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}"
-        SERVER_IMAGE = "${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}"
+
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+
+        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     }
+
     stages {
         stage('Checkout Code') {
             steps {
                 echo 'Pulling code from GitHub...'
+
                 git url: 'https://github.com/hungyhan/todoapp.git',
                     branch: 'main',
                     credentialsId: 'do2602-jenkins-github'
             }
         }
+
         stage('Login to AWS ECR') {
             steps {
                 echo 'Login to ECR...'
-                // Lệnh login sử dụng IAM Role (không cần pass)
+
                 sh """
                     aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${ECR_URL}
+                    | docker login \
+                        --username AWS \
+                        --password-stdin ${ECR_URL}
                 """
             }
         }
+
         stage('Build Client Image') {
             steps {
                 echo 'Building client image...'
+
                 sh """
-                    docker build -t ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} ./client
-                    docker tag ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
-                    docker tag ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
+                    docker build \
+                        -t ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} \
+                        ./client
+
+                    docker tag \
+                        ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} \
+                        ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
+
+                    docker tag \
+                        ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} \
+                        ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
                 """
             }
         }
+
         stage('Build Server Image') {
             steps {
                 echo 'Building server image...'
+
                 sh """
-                    docker build -t ${SERVER_IMAGE_NAME}:${IMAGE_TAG} ./server
-                    docker tag ${SERVER_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
-                    docker tag ${SERVER_IMAGE_NAME}:${IMAGE_TAG} ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
+                    docker build \
+                        -t ${SERVER_IMAGE_NAME}:${IMAGE_TAG} \
+                        ./server
+
+                    docker tag \
+                        ${SERVER_IMAGE_NAME}:${IMAGE_TAG} \
+                        ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
+
+                    docker tag \
+                        ${SERVER_IMAGE_NAME}:${IMAGE_TAG} \
+                        ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
                 """
             }
         }
+
         stage('Push Images to ECR') {
             steps {
                 echo 'Pushing images to ECR...'
-                echo "Client image: ${CLIENT_IMAGE}"
-                echo "Server image: ${SERVER_IMAGE}"
+
                 sh """
                     docker push ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
-
                     docker push ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
                 """
             }
         }
-        // stage('Deploy Server to Kubernetes') {
-        //     steps {
-        //         echo 'Deploying server to Kubernetes...'
 
-        //         sh """
-        //             echo "Server image: ${SERVER_IMAGE}"
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo 'Deploying application to Kubernetes...'
 
-        //             kubectl apply -f k8s/00-namespace.yaml
-        //             kubectl apply -f k8s/01-configmap.yaml
-        //             kubectl apply -f k8s/02-secret.yaml
+                sh '''
+                    set -e
 
-        //             envsubst < k8s/03-server-deployment.yaml | kubectl apply -f -
+                    export CLIENT_IMAGE="${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}"
+                    export SERVER_IMAGE="${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}"
 
-        //             kubectl rollout status deployment/todo-server \
-        //                 --namespace todo-app \
-        //                 --timeout=180s
-        //         """
-        //     }
-        // }
+                    echo "Deploying client image: ${CLIENT_IMAGE}"
+                    echo "Deploying server image: ${SERVER_IMAGE}"
+
+                    kubectl apply -f k8s/00-namespace.yaml
+
+                    kubectl apply -f k8s/01-configmap.yaml
+                    kubectl apply -f k8s/02-secret.yaml
+
+                    envsubst < k8s/03-server-deployment.yaml \
+                      | kubectl apply -f -
+
+                    kubectl apply -f k8s/04-server-service.yaml
+
+                    envsubst < k8s/05-client-deployment.yaml \
+                      | kubectl apply -f -
+
+                    kubectl apply -f k8s/06-client-service.yaml
+                    kubectl apply -f k8s/07-ingress.yaml
+
+                    echo "Kubernetes manifests applied successfully."
+                '''
+            }
+        }
+
         stage('Cleanup') {
             steps {
-                // Xóa ảnh local để tránh đầy ổ cứng server
+                echo 'Cleaning local Docker images...'
+
                 sh """
-                    docker rmi ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG}
-                    docker rmi ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest
-                    docker rmi ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG}
-                    docker rmi ${ECR_URL}/${SERVER_IMAGE_NAME}:latest
+                    docker rmi ${ECR_URL}/${CLIENT_IMAGE_NAME}:${IMAGE_TAG} || true
+
+                    docker rmi ${ECR_URL}/${CLIENT_IMAGE_NAME}:latest || true
+
+                    docker rmi ${ECR_URL}/${SERVER_IMAGE_NAME}:${IMAGE_TAG} || true
+
+                    docker rmi ${ECR_URL}/${SERVER_IMAGE_NAME}:latest || true
+
+                    docker rmi ${CLIENT_IMAGE_NAME}:${IMAGE_TAG} || true
+
+                    docker rmi ${SERVER_IMAGE_NAME}:${IMAGE_TAG} || true
                 """
             }
         }
