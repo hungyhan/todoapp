@@ -1,47 +1,46 @@
 const express = require("express");
-const app = express();
 const cors = require("cors");
 const pool = require("./db");
-const path = require("path");
-const PORT = process.env.PORT || 5000;
 
-//process.env.PORT
-//process.env.NODE_ENV => production or undefined
+const app = express();
+const PORT = Number(process.env.PORT || 5000);
 
-//test thử jenkins
-//test thử jenkins lần 2
+// Middleware
+app.use(express.json());
 
-// middleware
-app.use(express.json()); // giving us access to req.body so we can get JSON Data.
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://todo.do2602.click",
+      "http://localhost:3000",
+    ],
+    credentials: true,
+  }),
+);
 
-// app.use(express.static(path.join(__dirname, "client/build")));
-// app.use(express.static("./client/build"));
-
-if (process.env.NODE_ENV === "production") {
-  // server static content
-  // npm run build
-  app.use(express.static(path.join(__dirname, "client_new/dist")));
-}
-
-// ROUTES //
+// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
   });
 });
+
 // CREATE A TODO
 app.post("/todos", async (req, res) => {
   try {
     const { description } = req.body;
+
     const newTodo = await pool.query(
       "INSERT INTO todo (description) VALUES($1) RETURNING *",
       [description],
     );
 
-    res.json(newTodo.rows[0]);
+    res.status(201).json(newTodo.rows[0]);
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
+    res.status(500).json({
+      message: "Unable to create todo",
+    });
   }
 });
 
@@ -49,9 +48,13 @@ app.post("/todos", async (req, res) => {
 app.get("/todos", async (req, res) => {
   try {
     const allTodos = await pool.query("SELECT * FROM todo");
+
     res.json(allTodos.rows);
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
+    res.status(500).json({
+      message: "Unable to get todos",
+    });
   }
 });
 
@@ -59,12 +62,24 @@ app.get("/todos", async (req, res) => {
 app.get("/todos/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const todo = await pool.query("SELECT * FROM todo WHERE todo_id = $1", [
-      id,
-    ]);
+
+    const todo = await pool.query(
+      "SELECT * FROM todo WHERE todo_id = $1",
+      [id],
+    );
+
+    if (todo.rows.length === 0) {
+      return res.status(404).json({
+        message: "Todo not found",
+      });
+    }
+
     res.json(todo.rows[0]);
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
+    res.status(500).json({
+      message: "Unable to get todo",
+    });
   }
 });
 
@@ -73,14 +88,29 @@ app.put("/todos/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { description } = req.body;
-    const updateTodo = await pool.query(
-      "UPDATE todo SET description = $1 WHERE todo_id = $2",
+
+    const result = await pool.query(
+      `
+      UPDATE todo
+      SET description = $1
+      WHERE todo_id = $2
+      RETURNING *
+      `,
       [description, id],
     );
 
-    res.json("Todo was updated!");
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Todo not found",
+      });
+    }
+
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
+    res.status(500).json({
+      message: "Unable to update todo",
+    });
   }
 });
 
@@ -88,19 +118,36 @@ app.put("/todos/:id", async (req, res) => {
 app.delete("/todos/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const deleteTodo = await pool.query("DELETE FROM todo WHERE todo_id = $1", [
-      id,
-    ]);
-    res.json("Todo was deleted!");
+
+    const result = await pool.query(
+      "DELETE FROM todo WHERE todo_id = $1 RETURNING *",
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Todo not found",
+      });
+    }
+
+    res.json({
+      message: "Todo was deleted",
+    });
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
+    res.status(500).json({
+      message: "Unable to delete todo",
+    });
   }
 });
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "client_new/dist/index.html"));
+// Route không tồn tại
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Route not found",
+  });
 });
 
-app.listen(PORT, "0.0.0.0", () =>
-  console.log(`Server is running on port ${PORT}`),
-);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server is running on port ${PORT}`);
+});
