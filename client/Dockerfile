@@ -1,24 +1,22 @@
-# Stage 1: Biên dịch mã nguồn React sang file tĩnh
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy các file quản lý thư viện trước để tận dụng Docker cache
 COPY package*.json ./
-RUN npm install
 
-# Copy toàn bộ mã nguồn của client vào và tiến hành build
+RUN npm ci
+
 COPY . .
+
 RUN npm run build
 
-# Stage 2: Sử dụng Nginx để phục vụ ứng dụng
-FROM nginx:1.25-alpine
 
-# Copy thư mục 'dist' đã được build từ Stage 1 vào thư mục mặc định của Nginx
-COPY --from=builder /app/dist /usr/share/nginx/html
+FROM nginx:alpine
 
-# Expose cổng 80 (Cổng mặc định của Web Server Nginx)
+COPY --from=build /app/dist /usr/share/nginx/html
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 EXPOSE 3000
 
-# Chạy Nginx ở chế độ foreground để container không bị tắt
 CMD ["nginx", "-g", "daemon off;"]
