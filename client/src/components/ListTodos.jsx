@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import EditTodo from "./EditTodo";
 
 const ListTodos = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [todos, setTodos] = useState([]);
 
   const deleteTodo = async (id) => {
     try {
-      await fetch(`/todos/${id}`, {
+      await fetch(`${API_URL}/todos/${id}`, {
         method: "DELETE",
       });
 
@@ -18,7 +20,7 @@ const ListTodos = () => {
 
   const getTodos = async () => {
     try {
-      const response = await fetch("/todos");
+      const response = await fetch(`${API_URL}/todos`);
       const jsonData = await response.json();
 
       setTodos(jsonData);

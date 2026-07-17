@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 const EditTodo = ({ todo }) => {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [description, setDescription] = useState(todo.description);
 
   const updateDescription = async (e) => {
@@ -8,7 +10,7 @@ const EditTodo = ({ todo }) => {
     try {
       const body = { description };
 
-      await fetch(`/todos/${todo.todo_id}`, {
+      await fetch(`${API_URL}/todos/${todo.todo_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

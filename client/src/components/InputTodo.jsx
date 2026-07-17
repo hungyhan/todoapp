@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 const InputTodo = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [description, setDescription] = useState("");
 
   const onSubmitForm = async (e) => {
@@ -8,7 +10,7 @@ const InputTodo = () => {
     try {
       const body = { description };
 
-      await fetch("/todos", {
+      await fetch(`${API_URL}/todos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
