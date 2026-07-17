@@ -10,9 +10,8 @@ data:
 
   PORT: "5000"
 
-  DB_HOST: "postgres-service"
-  # DB_HOST: "postgres-service"
+  DB_HOST: "postgesql-postgresql.do2602-hungcm.svc.cluster.local"
 
   DB_PORT: "5432"
 
-  DB_NAME: "todo"
+  DB_NAME: "db_todo"
